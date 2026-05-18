@@ -61,30 +61,18 @@ def retrieve_memories(
     min_novelty: float = 0.0,
 ) -> list[dict]:
     embedding = _embed(query)
-    embedding_str = str(embedding).replace(" ", "")
 
-    sql = """
-        SELECT id, content, material_system, simulation_software,
-               memory_type, novelty_score, created_at,
-               1 - (embedding <=> $1::vector) AS similarity
-        FROM memories
-        WHERE novelty_score >= $2
-    """
-    params: list = [embedding_str, min_novelty]
-
-    if material_system:
-        params.append(material_system)
-        sql += f" AND material_system = ${len(params)}"
-    if simulation_software:
-        params.append(simulation_software)
-        sql += f" AND simulation_software = ${len(params)}"
-    if memory_type:
-        params.append(memory_type)
-        sql += f" AND memory_type = ${len(params)}"
-
-    sql += f" ORDER BY embedding <=> $1::vector ASC LIMIT {top_k}"
-
-    result = _get_supabase().rpc("execute_sql", {"query": sql, "params": params}).execute()
+    result = _get_supabase().rpc(
+        "match_memories",
+        {
+            "query_embedding": embedding,
+            "match_count": top_k,
+            "min_novelty": min_novelty,
+            "filter_material_system": material_system,
+            "filter_simulation_software": simulation_software,
+            "filter_memory_type": memory_type,
+        },
+    ).execute()
     return result.data
 
 
