@@ -1,11 +1,12 @@
 from typing import Optional
 import requests
+import xml.etree.ElementTree as ET
 
 from hippocampus import store_memory
 
 
-SEMANTIC_SCHOLAR_URL = "https://api.semanticscholar.org/graph/v1/paper/search"
-FIELDS = "title,abstract,year,authors,citationCount,externalIds"
+ARXIV_URL = "http://export.arxiv.org/api/query"
+ATOM_NS = "{http://www.w3.org/2005/Atom}"
 
 
 class LiteratureAgent:
@@ -17,32 +18,38 @@ class LiteratureAgent:
         simulation_software: Optional[str] = None,
     ) -> list[dict]:
         params = {
-            "query": topic,
-            "fields": FIELDS,
-            "limit": 50,
-            "sort": "citationCount:desc",
+            "search_query": f"all:{topic}",
+            "max_results": 10,
+            "sortBy": "relevance",
+            "sortOrder": "descending",
         }
 
-        response = requests.get(SEMANTIC_SCHOLAR_URL, params=params)
+        response = requests.get(ARXIV_URL, params=params)
         response.raise_for_status()
-        data = response.json()
 
-        papers = data.get("data", [])
-        papers = [p for p in papers if p.get("abstract")]
-        papers = papers[:limit]
+        root = ET.fromstring(response.content)
+        entries = root.findall(f"{ATOM_NS}entry")
 
-        for paper in papers:
-            authors = ", ".join(
-                a.get("name", "") for a in paper.get("authors", []) if a.get("name")
-            )
-            doi = paper.get("externalIds", {}).get("DOI", "N/A")
+        papers = []
+        for entry in entries[:limit]:
+            title = entry.find(f"{ATOM_NS}title").text.strip()
+            abstract = entry.find(f"{ATOM_NS}summary").text.strip()[:300]
+            published = entry.find(f"{ATOM_NS}published").text
+            year = published[:4] if published else "N/A"
+
+            author_elements = entry.findall(f"{ATOM_NS}author")
+            authors = []
+            for a in author_elements[:3]:
+                name_elem = a.find(f"{ATOM_NS}name")
+                if name_elem is not None and name_elem.text:
+                    authors.append(name_elem.text.strip())
+            author_str = ", ".join(authors) if authors else "N/A"
+
             summary = (
-                f"Title: {paper.get('title', 'N/A')}\n"
-                f"Authors: {authors}\n"
-                f"Year: {paper.get('year', 'N/A')}\n"
-                f"Citations: {paper.get('citationCount', 0)}\n"
-                f"DOI: {doi}\n"
-                f"Abstract: {paper.get('abstract', '')}"
+                f"Title: {title}\n"
+                f"Authors: {author_str}\n"
+                f"Year: {year}\n"
+                f"Abstract: {abstract}"
             )
 
             store_memory(
@@ -51,5 +58,12 @@ class LiteratureAgent:
                 simulation_software=simulation_software,
                 memory_type="literature",
             )
+
+            papers.append({
+                "title": title,
+                "authors": author_str,
+                "year": year,
+                "abstract": abstract,
+            })
 
         return papers
