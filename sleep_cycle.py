@@ -3,15 +3,12 @@ import random
 from datetime import datetime, timedelta
 from typing import Optional
 
-import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import LoraConfig, TaskType
 from datasets import Dataset
 from trl import SFTConfig, SFTTrainer
 from supabase import create_client, Client
 
 
-MODEL_ID = "Qwen/Qwen3-4B"
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 ADAPTER_OUTPUT_DIR = "./lora_adapters/latest"
@@ -79,27 +76,6 @@ def generate_synthetic_data(base_data: list[dict], target_count: int) -> list[di
     return synthetic
 
 
-def load_base_model():
-    bnb_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=torch.float16,
-        bnb_4bit_quant_type="nf4",
-    )
-
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID,
-        quantization_config=bnb_config,
-        device_map="auto",
-        torch_dtype=torch.float16,
-    )
-
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    return model, tokenizer
-
-
 def get_lora_config():
     return LoraConfig(
         task_type=TaskType.CAUSAL_LM,
@@ -138,7 +114,7 @@ def train_model(model, tokenizer, training_data: list[dict], lora_config: LoraCo
     tokenizer.save_pretrained(ADAPTER_OUTPUT_DIR)
 
 
-def run_sleep_cycle():
+def run_sleep_cycle(model, tokenizer):
     print("Starting sleep cycle...")
 
     print("Pulling recent memories...")
@@ -153,9 +129,6 @@ def run_sleep_cycle():
     if len(training_data) < MIN_TRAINING_SAMPLES:
         print(f"Only {len(training_data)} samples found. Generating synthetic data to reach {MIN_TRAINING_SAMPLES}...")
         training_data = generate_synthetic_data(training_data, MIN_TRAINING_SAMPLES)
-
-    print("Loading base model with 4bit quantization...")
-    model, tokenizer = load_base_model()
 
     print("Configuring LoRA adapters...")
     lora_config = get_lora_config()
