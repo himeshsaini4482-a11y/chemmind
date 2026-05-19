@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Optional
 from datetime import datetime
 
@@ -82,7 +83,7 @@ def compute_novelty(text: str) -> float:
     if not result.data:
         return 1.0
 
-    stored = [r["embedding"] for r in result.data]
+    stored = [json.loads(r["embedding"]) if isinstance(r["embedding"], str) else r["embedding"] for r in result.data]
     query_vec = np.array(_embed(text))
     stored_matrix = np.array(stored)
 
