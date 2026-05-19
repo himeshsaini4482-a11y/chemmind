@@ -96,14 +96,17 @@ def train_model(model, tokenizer, training_data: list[dict], lora_config: LoraCo
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
         learning_rate=2e-4,
-        fp16=True,
+        fp16=False,
+        bf16=False,
         logging_steps=1,
         report_to="none",
         max_seq_length=512,
     )
 
+    base_model = model.base_model.model if hasattr(model, "base_model") else model
+
     trainer = SFTTrainer(
-        model=model,
+        model=base_model,
         train_dataset=dataset,
         args=sft_config,
         peft_config=lora_config,
