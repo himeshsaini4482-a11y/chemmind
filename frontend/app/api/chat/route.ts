@@ -2,24 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { question, material_system, simulation_software } = await request.json();
+    const body = await request.json();
 
-    if (!question) {
+    if (!body.question) {
       return NextResponse.json(
         { error: "Question is required" },
         { status: 400 }
       );
     }
 
-    const backendUrl = process.env.CHEMMIND_BACKEND_URL || "https://cried-motocross-unrated.ngrok-free.dev";
-
-    const response = await fetch(`${backendUrl}/chat`, {
+    const response = await fetch("https://cried-motocross-unrated.ngrok-free.dev/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        question,
-        material_system,
-        simulation_software,
+        question: body.question,
+        material_system: body.material_system,
+        simulation_software: body.simulation_software,
       }),
     });
 
