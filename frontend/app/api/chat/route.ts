@@ -11,9 +11,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const backendUrl = process.env.CHEMMIND_BACKEND_URL || "http://localhost:8000";
+    const backendUrl = process.env.CHEMMIND_BACKEND_URL || "https://cried-motocross-unrated.ngrok-free.dev";
 
-    const response = await fetch(`${backendUrl}/api/chat`, {
+    const response = await fetch(`${backendUrl}/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
