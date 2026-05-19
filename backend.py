@@ -28,7 +28,12 @@ class ChatResponse(BaseModel):
     intent: str
 
 
-@app.post("/api/chat", response_model=ChatResponse)
+@app.get("/")
+async def root():
+    return {"status": "ok"}
+
+
+@app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
     result = orchestrator_run(
         question=request.question,
