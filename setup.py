@@ -117,7 +117,12 @@ def generate(
     stream: bool = False,
 ) -> str:
     messages = [{"role": "user", "content": prompt}]
-    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=True,
+        enable_thinking=False,
+    )
     inputs = tokenizer(text, return_tensors="pt").to("cuda")
 
     if stream:
@@ -177,7 +182,7 @@ def ask(
 
     context = "\n\n".join(context_parts) if context_parts else "No relevant memories found."
 
-    prompt = f"""{SYSTEM_PROMPT}
+    prompt = f"/no_think\n\n{SYSTEM_PROMPT}
 
 ## Relevant Research Memories
 
@@ -187,7 +192,7 @@ def ask(
 
 {question}
 
-Provide a detailed, technically accurate answer for a computational chemistry researcher."""
+Provide a detailed, technically accurate answer for a computational chemistry researcher."
 
     response = generate(
         prompt,

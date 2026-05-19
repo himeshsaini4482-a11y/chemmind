@@ -37,12 +37,11 @@ def store_memory(
     memory_type: str = "general",
 ) -> str:
     embedding = _embed(text)
-    novelty = compute_novelty(text)
 
     row = {
         "content": text,
         "embedding": embedding,
-        "novelty_score": novelty,
+        "novelty_score": 0.5,
         "material_system": material_system,
         "simulation_software": simulation_software,
         "memory_type": memory_type,

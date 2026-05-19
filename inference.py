@@ -22,7 +22,7 @@ def _build_prompt(question: str, memories: list[dict]) -> str:
 
     context = "\n\n".join(context_parts) if context_parts else "No relevant memories found."
 
-    prompt = f"""{SYSTEM_PROMPT}
+    prompt = f"/no_think\n\n{SYSTEM_PROMPT}
 
 ## Relevant Research Memories
 
@@ -32,7 +32,7 @@ def _build_prompt(question: str, memories: list[dict]) -> str:
 
 {question}
 
-Provide a detailed, technically accurate answer for a computational chemistry researcher."""
+Provide a detailed, technically accurate answer for a computational chemistry researcher."
 
     return prompt
 
