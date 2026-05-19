@@ -4,10 +4,10 @@ from datetime import datetime, timedelta
 from typing import Optional
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, TrainingArguments
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
 from peft import LoraConfig, TaskType
 from datasets import Dataset
-from trl import SFTTrainer
+from trl import SFTConfig, SFTTrainer
 from supabase import create_client, Client
 
 
@@ -114,25 +114,22 @@ def get_lora_config():
 def train_model(model, tokenizer, training_data: list[dict], lora_config: LoraConfig):
     dataset = Dataset.from_list(training_data)
 
-    training_args = TrainingArguments(
+    sft_config = SFTConfig(
         output_dir=ADAPTER_OUTPUT_DIR,
         num_train_epochs=1,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,
         learning_rate=2e-4,
         fp16=True,
-        logging_steps=10,
-        save_strategy="epoch",
-        save_total_limit=1,
+        logging_steps=1,
         report_to="none",
+        max_seq_length=512,
     )
 
     trainer = SFTTrainer(
         model=model,
-        args=training_args,
         train_dataset=dataset,
-        dataset_text_field="text",
-        max_seq_length=512,
+        args=sft_config,
         peft_config=lora_config,
     )
 
