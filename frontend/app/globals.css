@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --chem-dark: #0a0f0d;
+  --chem-panel: #111a16;
+  --chem-border: #1a2e24;
+  --chem-primary: #10b981;
+  --chem-primary-hover: #059669;
+  --chem-text: #e2e8f0;
+  --chem-text-muted: #94a3b8;
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background: var(--chem-dark);
+  color: var(--chem-text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+    Ubuntu, Cantarell, sans-serif;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--chem-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--chem-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--chem-primary);
+}
