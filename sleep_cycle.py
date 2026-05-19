@@ -1,12 +1,13 @@
 import os
-import json
+import random
 from datetime import datetime, timedelta
 from typing import Optional
 
 import torch
-from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, TrainingArguments, Trainer
-from peft import LoraConfig, get_peft_model, TaskType
+from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig, TrainingArguments
+from peft import LoraConfig, TaskType
 from datasets import Dataset
+from trl import SFTTrainer
 from supabase import create_client, Client
 
 
@@ -16,6 +17,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 ADAPTER_OUTPUT_DIR = "./lora_adapters/latest"
 PRUNE_AGE_DAYS = 30
 PRUNE_NOVELTY_THRESHOLD = 0.3
+MIN_TRAINING_SAMPLES = 3
 
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -49,6 +51,34 @@ def format_training_data(memories: list[dict]) -> list[dict]:
     return training_data
 
 
+def generate_synthetic_data(base_data: list[dict], target_count: int) -> list[dict]:
+    prefixes = [
+        "Explain the following computational chemistry topic:",
+        "Provide detailed guidance on:",
+        "What are the best practices for:",
+        "How should I approach this simulation problem:",
+        "Analyze and provide recommendations for:",
+        "Give expert advice regarding:",
+    ]
+    suffixes = [
+        "Include specific parameters and convergence criteria.",
+        "Provide step-by-step instructions and common pitfalls.",
+        "Include validation methods and expected results.",
+        "Discuss theoretical background and practical implementation.",
+        "Compare different approaches and recommend the optimal one.",
+        "Include typical values for all relevant simulation parameters.",
+    ]
+
+    synthetic = list(base_data)
+    while len(synthetic) < target_count:
+        base = random.choice(base_data)
+        content = base["text"].replace("Question: ", "").split("\nAnswer:")[0]
+        new_text = f"Question: {random.choice(prefixes)} {content}\nAnswer: {random.choice(suffixes)} Provide expert computational chemistry guidance on this topic."
+        synthetic.append({"text": new_text})
+
+    return synthetic
+
+
 def load_base_model():
     bnb_config = BitsAndBytesConfig(
         load_in_4bit=True,
@@ -70,8 +100,8 @@ def load_base_model():
     return model, tokenizer
 
 
-def apply_lora(model):
-    lora_config = LoraConfig(
+def get_lora_config():
+    return LoraConfig(
         task_type=TaskType.CAUSAL_LM,
         r=8,
         lora_alpha=16,
@@ -80,24 +110,9 @@ def apply_lora(model):
         bias="none",
     )
 
-    return get_peft_model(model, lora_config)
 
-
-def tokenize_dataset(dataset: Dataset, tokenizer):
-    def tokenize_fn(batch):
-        return tokenizer(
-            batch["text"],
-            truncation=True,
-            max_length=512,
-            padding="max_length",
-        )
-
-    return dataset.map(tokenize_fn, batched=True, remove_columns=["text"])
-
-
-def train_model(model, tokenizer, training_data: list[dict]):
+def train_model(model, tokenizer, training_data: list[dict], lora_config: LoraConfig):
     dataset = Dataset.from_list(training_data)
-    tokenized_dataset = tokenize_dataset(dataset, tokenizer)
 
     training_args = TrainingArguments(
         output_dir=ADAPTER_OUTPUT_DIR,
@@ -112,10 +127,13 @@ def train_model(model, tokenizer, training_data: list[dict]):
         report_to="none",
     )
 
-    trainer = Trainer(
+    trainer = SFTTrainer(
         model=model,
         args=training_args,
-        train_dataset=tokenized_dataset,
+        train_dataset=dataset,
+        dataset_text_field="text",
+        max_seq_length=512,
+        peft_config=lora_config,
     )
 
     trainer.train()
@@ -134,19 +152,19 @@ def run_sleep_cycle():
 
     print(f"Found {len(memories)} memories. Formatting training data...")
     training_data = format_training_data(memories)
-    if not training_data:
-        print("No valid training data.")
-        return
+
+    if len(training_data) < MIN_TRAINING_SAMPLES:
+        print(f"Only {len(training_data)} samples found. Generating synthetic data to reach {MIN_TRAINING_SAMPLES}...")
+        training_data = generate_synthetic_data(training_data, MIN_TRAINING_SAMPLES)
 
     print("Loading base model with 4bit quantization...")
     model, tokenizer = load_base_model()
 
-    print("Applying LoRA adapters...")
-    model = apply_lora(model)
-    model.print_trainable_parameters()
+    print("Configuring LoRA adapters...")
+    lora_config = get_lora_config()
 
     print("Starting fine-tuning...")
-    train_model(model, tokenizer, training_data)
+    train_model(model, tokenizer, training_data, lora_config)
 
     print(f"Sleep cycle complete. Adapter saved to {ADAPTER_OUTPUT_DIR}")
 
