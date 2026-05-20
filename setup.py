@@ -182,17 +182,15 @@ def ask(
 
     context = "\n\n".join(context_parts) if context_parts else "No relevant memories found."
 
-    prompt = f"/no_think\n\n{SYSTEM_PROMPT}
-
-## Relevant Research Memories
-
-{context}
-
-## Question
-
-{question}
-
-Provide a detailed, technically accurate answer for a computational chemistry researcher."
+    prompt = (
+        "/no_think\n\n"
+        f"{SYSTEM_PROMPT}\n\n"
+        "## Relevant Research Memories\n\n"
+        f"{context}\n\n"
+        "## Question\n\n"
+        f"{question}\n\n"
+        "Provide a detailed, technically accurate answer for a computational chemistry researcher."
+    )
 
     response = generate(
         prompt,
