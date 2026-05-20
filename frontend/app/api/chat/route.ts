@@ -13,7 +13,10 @@ export async function POST(request: NextRequest) {
 
     const response = await fetch("https://cried-motocross-unrated.ngrok-free.dev/chat", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "ngrok-skip-browser-warning": "true",
+      },
       body: JSON.stringify({
         question: body.question,
         material_system: body.material_system,
