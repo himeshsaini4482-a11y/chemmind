@@ -76,36 +76,17 @@ def store_memory(
     material_system: Optional[str] = None,
     simulation_software: Optional[str] = None,
     memory_type: str = "general",
-) -> str:
-    import numpy as np
-    from datetime import datetime
-
+    **kwargs,
+) -> None:
     embedding = _embed(text)
-
-    result = supabase.table("memories").select("embedding").execute()
-    if result.data:
-        stored = [r["embedding"] for r in result.data]
-        query_vec = np.array(embedding)
-        stored_matrix = np.array(stored)
-        norms = np.linalg.norm(stored_matrix, axis=1, keepdims=True)
-        norms[norms == 0] = 1e-8
-        cosine_sim = (stored_matrix @ query_vec) / (norms.squeeze() * np.linalg.norm(query_vec))
-        novelty = round(1.0 - cosine_sim.max(), 4)
-    else:
-        novelty = 1.0
-
-    row = {
+    supabase.table("memories").insert({
         "content": text,
         "embedding": embedding,
-        "novelty_score": novelty,
+        "novelty_score": 0.5,
         "material_system": material_system,
         "simulation_software": simulation_software,
         "memory_type": memory_type,
-        "created_at": datetime.utcnow().isoformat(),
-    }
-
-    result = supabase.table("memories").insert(row).execute()
-    return result.data[0]["id"]
+    }).execute()
 
 
 def generate(
